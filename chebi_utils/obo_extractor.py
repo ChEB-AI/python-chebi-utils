@@ -8,9 +8,9 @@ import fastobo
 import networkx as nx
 
 
-def _chebi_id_to_int(chebi_id: str) -> int:
-    """Convert 'CHEBI:123' to 123."""
-    return int(chebi_id.split(":")[1])
+def _chebi_id_to_str(chebi_id: str) -> str:
+    """Convert 'CHEBI:123' to '123' (string)."""
+    return chebi_id.split(":")[1]
 
 
 def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
@@ -21,8 +21,8 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
     dict or None
         Parsed term data, or ``None`` if the term is marked as obsolete.
     """
-    parents: list[int] = []
-    has_part: set[int] = set()
+    parents: list[str] = []
+    has_part: set[str] = set()
     name: str | None = None
     smiles: str | None = None
     subset: str | None = None
@@ -43,16 +43,16 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
                 smiles = clause.raw_value().split('"')[1]
         elif isinstance(clause, fastobo.term.RelationshipClause):
             if str(clause.typedef) == "has_part":
-                has_part.add(_chebi_id_to_int(str(clause.term)))
+                has_part.add(_chebi_id_to_str(str(clause.term)))
         elif isinstance(clause, fastobo.term.IsAClause):
-            parents.append(_chebi_id_to_int(str(clause.term)))
+            parents.append(_chebi_id_to_str(str(clause.term)))
         elif isinstance(clause, fastobo.term.NameClause):
             name = str(clause.name)
         elif isinstance(clause, fastobo.term.SubsetClause):
             subset = str(clause.subset)
 
     return {
-        "id": _chebi_id_to_int(str(doc.id)),
+        "id": _chebi_id_to_str(str(doc.id)),
         "parents": parents,
         "has_part": has_part,
         "name": name,
@@ -68,7 +68,7 @@ def build_chebi_graph(filepath: str | Path) -> nx.DiGraph:
     errors on some ChEBI releases.  Only non-obsolete CHEBI-prefixed terms
     are included.
 
-    **Nodes** are integer CHEBI IDs (e.g. ``1`` for ``CHEBI:1``) with
+    **Nodes** are string CHEBI IDs (e.g. ``"1"`` for ``CHEBI:1``) with
     attributes ``name``, ``smiles``, and ``subset``.
 
     **Edges** carry a ``relation`` attribute and represent:

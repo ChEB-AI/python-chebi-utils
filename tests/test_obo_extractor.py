@@ -22,50 +22,50 @@ class TestBuildChebiGraph:
         g = build_chebi_graph(SAMPLE_OBO)
         assert len(g.nodes) == 4
 
-    def test_node_ids_are_integers(self):
+    def test_node_ids_are_strings(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert all(isinstance(n, int) for n in g.nodes)
+        assert all(isinstance(n, str) for n in g.nodes)
 
     def test_expected_nodes_present(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert set(g.nodes) == {1, 2, 3, 5}
+        assert set(g.nodes) == {"1", "2", "3", "5"}
 
     def test_obsolete_term_excluded(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert 4 not in g.nodes
+        assert "4" not in g.nodes
 
     def test_node_name_attribute(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes[1]["name"] == "compound A"
-        assert g.nodes[2]["name"] == "compound B"
+        assert g.nodes["1"]["name"] == "compound A"
+        assert g.nodes["2"]["name"] == "compound B"
 
     def test_smiles_extracted_from_property_value(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes[1]["smiles"] == "C"
+        assert g.nodes["1"]["smiles"] == "C"
 
     def test_smiles_none_when_absent(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes[2]["smiles"] is None
+        assert g.nodes["2"]["smiles"] is None
 
     def test_subset_extracted(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes[3]["subset"] == "3_STAR"
+        assert g.nodes["3"]["subset"] == "3_STAR"
 
     def test_subset_none_when_absent(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes[1]["subset"] is None
+        assert g.nodes["1"]["subset"] is None
 
     def test_isa_edge_present(self):
         g = build_chebi_graph(SAMPLE_OBO)
         # CHEBI:1 is_a CHEBI:2
-        assert g.has_edge(1, 2)
-        assert g.edges[1, 2]["relation"] == "is_a"
+        assert g.has_edge("1", "2")
+        assert g.edges["1", "2"]["relation"] == "is_a"
 
     def test_has_part_edge_present(self):
         g = build_chebi_graph(SAMPLE_OBO)
         # CHEBI:1 has_part CHEBI:3
-        assert g.has_edge(1, 3)
-        assert g.edges[1, 3]["relation"] == "has_part"
+        assert g.has_edge("1", "3")
+        assert g.edges["1", "3"]["relation"] == "has_part"
 
     def test_total_edge_count(self):
         g = build_chebi_graph(SAMPLE_OBO)
@@ -83,4 +83,4 @@ class TestBuildChebiGraph:
             "format-version: 1.2\n[Term]\nid: CHEBI:10\nname: test\nxref: Reaxys:123456\n"
         )
         g = build_chebi_graph(obo_with_xrefs)
-        assert 10 in g.nodes
+        assert "10" in g.nodes
