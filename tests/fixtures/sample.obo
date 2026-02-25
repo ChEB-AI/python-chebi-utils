@@ -1,0 +1,30 @@
+format-version: 1.2
+ontology: chebi
+
+[Term]
+id: CHEBI:1
+name: compound A
+def: "A test compound." [TestDB:001]
+is_a: CHEBI:2 ! compound B
+relationship: has_role CHEBI:3 ! some role
+
+[Term]
+id: CHEBI:2
+name: compound B
+def: "Another test compound." [TestDB:002]
+is_a: CHEBI:4 ! root compound
+
+[Term]
+id: CHEBI:3
+name: some role
+def: "A biological role." [TestDB:003]
+
+[Term]
+id: CHEBI:4
+name: root compound
+def: "The root compound." [TestDB:004]
+is_obsolete: true
+
+[Typedef]
+id: has_role
+name: has role

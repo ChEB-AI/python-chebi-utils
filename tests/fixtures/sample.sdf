@@ -1,0 +1,58 @@
+compound_a
+
+  0  0  0  0  0  0  0  0  0  0999 V2000
+M  END
+> <ChEBI ID>
+CHEBI:1
+
+> <ChEBI Name>
+compound A
+
+> <SMILES>
+C
+
+> <InChI>
+InChI=1S/CH4/h1H4
+
+> <InChIKey>
+VNWKTOKETHGBQD-UHFFFAOYSA-N
+
+> <Formulae>
+CH4
+
+> <Charge>
+0
+
+> <Mass>
+16.043
+
+$$$$
+compound_b
+
+  0  0  0  0  0  0  0  0  0  0999 V2000
+M  END
+> <ChEBI ID>
+CHEBI:2
+
+> <ChEBI Name>
+compound B
+
+> <SMILES>
+CC
+
+> <InChI>
+InChI=1S/C2H6/c1-2/h1-2H3
+
+> <InChIKey>
+OTMSDBZUPAUEDD-UHFFFAOYSA-N
+
+> <Formulae>
+C2H6
+
+> <Charge>
+0
+
+> <Mass>
+30.069
+
+$$$$
