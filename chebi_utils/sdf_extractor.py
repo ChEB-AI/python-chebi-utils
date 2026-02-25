@@ -10,10 +10,21 @@ import pandas as pd
 from rdkit import Chem
 
 
-def _update_mol_valences(mol: Chem.Mol) -> Chem.Mol:
-    """Mark all atoms as having no implicit hydrogens to preserve molfile valences."""
-    for atom in mol.GetAtoms():
-        atom.SetNoImplicit(True)
+def _sanitize_molecule(mol: Chem.Mol) -> Chem.Mol:
+    """Sanitize molecule, mirroring the ChEBI molecule processing."""
+    from chembl_structure_pipeline.standardizer import update_mol_valences
+
+    mol = update_mol_valences(mol)
+    Chem.SanitizeMol(
+        mol,
+        sanitizeOps=Chem.SanitizeFlags.SANITIZE_FINDRADICALS
+        | Chem.SanitizeFlags.SANITIZE_KEKULIZE
+        | Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
+        | Chem.SanitizeFlags.SANITIZE_SETCONJUGATION
+        | Chem.SanitizeFlags.SANITIZE_SETHYBRIDIZATION
+        | Chem.SanitizeFlags.SANITIZE_SYMMRINGS,
+        catchErrors=True,
+    )
     return mol
 
 
@@ -39,19 +50,7 @@ def _parse_molblock(molblock: str, chebi_id: str | None = None) -> Chem.Mol | No
     if mol is None:
         warnings.warn(f"Failed to parse molblock for {chebi_id}", stacklevel=2)
         return None
-    mol = _update_mol_valences(mol)
-    Chem.SanitizeMol(
-        mol,
-        sanitizeOps=(
-            Chem.SanitizeFlags.SANITIZE_FINDRADICALS
-            | Chem.SanitizeFlags.SANITIZE_KEKULIZE
-            | Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
-            | Chem.SanitizeFlags.SANITIZE_SETCONJUGATION
-            | Chem.SanitizeFlags.SANITIZE_SETHYBRIDIZATION
-            | Chem.SanitizeFlags.SANITIZE_SYMMRINGS
-        ),
-        catchErrors=True,
-    )
+    mol = _sanitize_molecule(mol)
     return mol
 
 

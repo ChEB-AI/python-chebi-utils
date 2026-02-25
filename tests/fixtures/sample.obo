@@ -1,37 +1,87 @@
 format-version: 1.2
+date: 06:01:2026 14:33
+saved-by: chebi
+subsetdef: 1:STAR "Preliminary entries"
+subsetdef: 2:STAR "Annotated by 3rd party"
+subsetdef: 3:STAR "Manually annotated by ChEBI Team"
+synonymtypedef: BRAND:NAME "BRAND NAME"
+synonymtypedef: http://purl.obolibrary.org/obo/chebi/INN "INN"
+synonymtypedef: IUPAC:NAME "IUPAC NAME"
+default-namespace: chebi_ontology
+idspace: chemrof https://w3id.org/chemrof/ 
+idspace: foaf http://xmlns.com/foaf/0.1/ 
+idspace: oboInOwl http://www.geneontology.org/formats/oboInOwl# 
+idspace: terms http://purl.org/dc/terms/ 
+remark: ChEBI subsumes and replaces the Chemical Ontology first. This ontology was developed by Michael Ashburner and Pankaj Jaiswal. Data was cuarated by The ChEBI Curation Team. For any queries contact chebi-help@ebi.ac.uk
 ontology: chebi
+property_value: foaf:homepage "https://www.ebi.ac.uk/chebi" xsd:anyURI
+property_value: owl:versionInfo "248" xsd:decimal
+property_value: terms:description "Chemical Entities of Biological Interest, also known as ChEBI, is a chemical database and ontology of molecular entities focused on 'small' chemical compounds, that is part of the Open Biomedical Ontologies (OBO) effort at the European Bioinformatics Institute (EBI)." xsd:string
+property_value: terms:license https://creativecommons.org/licenses/by/4.0/
+property_value: terms:title "ChEBI Ontology" xsd:string
 
 [Term]
-id: CHEBI:1
-name: compound A
-def: "A test compound." [TestDB:001]
-is_a: CHEBI:2 ! compound B
-relationship: has_part CHEBI:3 ! methyl group
-property_value: http://purl.obolibrary.org/obo/chebi/smiles "C" xsd:string
+id: CHEBI:10
+name: (+)-Atherospermoline
+subset: 2:STAR
+synonym: "(+)-Atherospermoline" RELATED [kegg.compound]
+xref: cas:21008-67-3 {source="cas"}
+xref: kegg.compound:C11141 {source="kegg.compound"}
+xref: knapsack:C00001814 {source="knapsack"}
+is_a: CHEBI:133004 ! bisbenzylisoquinoline alkaloid
+property_value: chemrof:charge "0" xsd:integer
+property_value: chemrof:generalized_empirical_formula "C36H38N2O6" xsd:string
+property_value: chemrof:inchi_key_string "XGEAUXVPBXUBKN-NSOVKSMOSA-N" xsd:string
+property_value: chemrof:inchi_string "InChI=1S/C36H38N2O6/c1-37-13-11-23-18-31(41-3)32-20-26(23)27(37)15-21-5-8-25(9-6-21)43-30-17-22(7-10-29(30)39)16-28-34-24(12-14-38(28)2)19-33(42-4)35(40)36(34)44-32/h5-10,17-20,27-28,39-40H,11-16H2,1-4H3/t27-,28-/m0/s1" xsd:string
+property_value: chemrof:mass "594.708" xsd:decimal
+property_value: chemrof:monoisotopic_mass "594.27299" xsd:decimal
+property_value: chemrof:smiles_string "COc1cc2c3cc1Oc1c(O)c(OC)cc4c1[C@H](Cc1ccc(O)c(c1)Oc1ccc(cc1)C[C@@H]3N(C)CC2)N(C)CC4" xsd:string
 
 [Term]
-id: CHEBI:2
-name: compound B
-def: "Another test compound." [TestDB:002]
-is_a: CHEBI:5 ! root compound
+id: CHEBI:133004
+name: bisbenzylisoquinoline alkaloid
+def: "A type of benzylisoquinoline alkaloid whose structures are built up of two benzylisoquinoline units linked by ether bridges. Various structural patterns resulting from additional bridging between the two units by direct carbon-carbon bridging or by methylenedioxy groups are common." []
+subset: 3:STAR
+synonym: "bis(benzylisoquinoline) alkaloid" RELATED [chebi]
+synonym: "bis(benzylisoquinoline) alkaloids" RELATED [chebi]
+synonym: "bis-benzylisoquinoline alkaloid" RELATED [chebi]
+synonym: "bis-benzylisoquinoline alkaloids" RELATED [chebi]
+synonym: "bisbenzylisoquinoline alkaloids" RELATED [chebi]
+xref: pubmed:1955879 {source="pubmed"}
+xref: pubmed:2191354 {source="pubmed"}
+xref: pubmed:3323421 {source="pubmed"}
+is_a: CHEBI:22750 ! benzylisoquinoline alkaloid
 
 [Term]
-id: CHEBI:3
-name: methyl group
-def: "A methyl group." [TestDB:003]
-subset: 3_STAR
+id: CHEBI:22750
+name: benzylisoquinoline alkaloid
+def: "Any isoquinoline alkaloid based on a benzylisoquinoline skeleton." []
+subset: 3:STAR
+synonym: "benzylisoquinoline alkaloids" RELATED [chebi]
+is_a: CHEBI:24921 ! isoquinoline alkaloid
 
 [Term]
-id: CHEBI:4
-name: obsolete term
-def: "This term is obsolete." [TestDB:004]
+id: CHEBI:27189
 is_obsolete: true
 
 [Term]
-id: CHEBI:5
-name: root compound
-def: "The root compound." [TestDB:005]
-
-[Typedef]
-id: has_part
-name: has part
+id: CHEBI:28017
+name: starch
+alt_id: CHEBI:26750
+alt_id: CHEBI:26751
+alt_id: CHEBI:9251
+def: "The most important reserve polysaccharide found in plants. It is a glucan consisting of amylose and amylopectin." []
+subset: 3:STAR
+synonym: "amidon" RELATED [chebi]
+synonym: "amylum" RELATED [chebi]
+synonym: "Staerke" RELATED [chebi]
+synonym: "Starch" RELATED [kegg.compound]
+xref: cas:9005-25-8 {source="cas"}
+xref: kegg.compound:C00369 {source="kegg.compound"}
+xref: kegg.drug:D06507 {source="kegg.drug"}
+xref: kegg.glycan:G10545 {source="kegg.glycan"}
+xref: wikipedia.en:Starch {source="wikipedia.en"}
+is_a: CHEBI:37163 ! glucan
+relationship: BFO:0000051 CHEBI:28057 ! has part amylopectin
+relationship: BFO:0000051 CHEBI:28102 ! has part amylose
+relationship: RO:0000087 CHEBI:75771 ! has role mouse metabolite

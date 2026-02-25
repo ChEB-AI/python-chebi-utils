@@ -22,7 +22,7 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
         Parsed term data, or ``None`` if the term is marked as obsolete.
     """
     parents: list[str] = []
-    has_part: set[str] = set()
+    relations: dict = dict()
     name: str | None = None
     smiles: str | None = None
     subset: str | None = None
@@ -42,8 +42,10 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
             if "SMILES" in clause.raw_value() and smiles is None:
                 smiles = clause.raw_value().split('"')[1]
         elif isinstance(clause, fastobo.term.RelationshipClause):
-            if str(clause.typedef) == "has_part":
-                has_part.add(_chebi_id_to_str(str(clause.term)))
+            relation = str(clause.typedef)
+            if relation not in relations:
+                relations[relation] = []
+            relations[relation].append(_chebi_id_to_str(str(clause.term)))
         elif isinstance(clause, fastobo.term.IsAClause):
             parents.append(_chebi_id_to_str(str(clause.term)))
         elif isinstance(clause, fastobo.term.NameClause):
@@ -54,7 +56,7 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
     return {
         "id": _chebi_id_to_str(str(doc.id)),
         "parents": parents,
-        "has_part": has_part,
+        "relations": relations,
         "name": name,
         "smiles": smiles,
         "subset": subset,
@@ -107,7 +109,14 @@ def build_chebi_graph(filepath: str | Path) -> nx.DiGraph:
         for parent_id in term["parents"]:
             graph.add_edge(node_id, parent_id, relation="is_a")
 
-        for part_id in term["has_part"]:
-            graph.add_edge(node_id, part_id, relation="has_part")
+        for relation, parts in term["relations"].items():
+            for part_id in parts:
+                graph.add_edge(node_id, part_id, relation=relation)
 
     return graph
+
+def get_hierarchy_subgraph(chebi_graph: nx.DiGraph) -> nx.DiGraph:
+    """Subgraph of ChEBI including only edges corresponding to hierarchical relations (is_a). Also removes nodes that are not connected by any is_a edges to other nodes."""
+    return chebi_graph.edge_subgraph(
+        (u, v) for u, v, d in chebi_graph.edges(data=True) if d.get("relation") == "is_a"
+    )

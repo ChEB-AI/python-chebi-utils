@@ -18,7 +18,7 @@ class TestBuildChebiGraph:
         assert isinstance(g, nx.DiGraph)
 
     def test_correct_number_of_nodes(self):
-        # CHEBI:4 is obsolete and must be excluded -> 4 nodes remain
+        # CHEBI:27189 is obsolete -> excluded; 3 explicit + 1 implicit (24921) = 4
         g = build_chebi_graph(SAMPLE_OBO)
         assert len(g.nodes) == 4
 
@@ -28,54 +28,49 @@ class TestBuildChebiGraph:
 
     def test_expected_nodes_present(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert set(g.nodes) == {"1", "2", "3", "5"}
+        assert set(g.nodes) == {"10", "133004", "22750", "24921"}
 
     def test_obsolete_term_excluded(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert "4" not in g.nodes
+        assert "27189" not in g.nodes
 
     def test_node_name_attribute(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes["1"]["name"] == "compound A"
-        assert g.nodes["2"]["name"] == "compound B"
+        assert g.nodes["10"]["name"] == "(+)-Atherospermoline"
+        assert g.nodes["133004"]["name"] == "bisbenzylisoquinoline alkaloid"
 
     def test_smiles_extracted_from_property_value(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes["1"]["smiles"] == "C"
+        expected = "COc1cc2c3cc1Oc1c(O)c(OC)cc4c1[C@H](Cc1ccc(O)c(c1)Oc1ccc(cc1)C[C@@H]3N(C)CC2)N(C)CC4"
+        assert g.nodes["10"]["smiles"] == expected
 
     def test_smiles_none_when_absent(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes["2"]["smiles"] is None
+        assert g.nodes["133004"]["smiles"] is None
 
     def test_subset_extracted(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes["3"]["subset"] == "3_STAR"
-
-    def test_subset_none_when_absent(self):
-        g = build_chebi_graph(SAMPLE_OBO)
-        assert g.nodes["1"]["subset"] is None
+        assert g.nodes["133004"]["subset"] == "3:STAR"
 
     def test_isa_edge_present(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        # CHEBI:1 is_a CHEBI:2
-        assert g.has_edge("1", "2")
-        assert g.edges["1", "2"]["relation"] == "is_a"
+        # CHEBI:10 is_a CHEBI:133004
+        assert g.has_edge("10", "133004")
+        assert g.edges["10", "133004"]["relation"] == "is_a"
 
-    def test_has_part_edge_present(self):
+    def test_isa_chain(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        # CHEBI:1 has_part CHEBI:3
-        assert g.has_edge("1", "3")
-        assert g.edges["1", "3"]["relation"] == "has_part"
+        # CHEBI:133004 is_a CHEBI:22750
+        assert g.has_edge("133004", "22750")
+        assert g.edges["133004", "22750"]["relation"] == "is_a"
+        # CHEBI:22750 is_a CHEBI:24921
+        assert g.has_edge("22750", "24921")
+        assert g.edges["22750", "24921"]["relation"] == "is_a"
 
     def test_total_edge_count(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        # 1->2 (is_a), 1->3 (has_part), 2->5 (is_a)
+        # 10->133004 (is_a), 133004->22750 (is_a), 22750->24921 (is_a)
         assert len(g.edges) == 3
-
-    def test_typedef_stanza_excluded(self):
-        g = build_chebi_graph(SAMPLE_OBO)
-        # "has_part" Typedef id is not numeric CHEBI ID, should not appear as node
-        assert "has_part" not in g.nodes
 
     def test_xref_lines_do_not_break_parsing(self, tmp_path):
         obo_with_xrefs = tmp_path / "xref.obo"
