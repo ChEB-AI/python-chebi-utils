@@ -4,69 +4,83 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from chebi_utils.obo_extractor import extract_classes, extract_relations
+import networkx as nx
+
+from chebi_utils.obo_extractor import build_chebi_graph
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SAMPLE_OBO = FIXTURES / "sample.obo"
 
 
-class TestExtractClasses:
-    def test_returns_dataframe_with_expected_columns(self):
-        df = extract_classes(SAMPLE_OBO)
-        assert list(df.columns) == ["id", "name", "definition", "is_obsolete"]
+class TestBuildChebiGraph:
+    def test_returns_directed_graph(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert isinstance(g, nx.DiGraph)
 
-    def test_correct_number_of_terms(self):
-        df = extract_classes(SAMPLE_OBO)
-        assert len(df) == 4
+    def test_correct_number_of_nodes(self):
+        # CHEBI:4 is obsolete and must be excluded -> 4 nodes remain
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert len(g.nodes) == 4
 
-    def test_term_ids_are_present(self):
-        df = extract_classes(SAMPLE_OBO)
-        assert set(df["id"]) == {"CHEBI:1", "CHEBI:2", "CHEBI:3", "CHEBI:4"}
+    def test_node_ids_are_integers(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert all(isinstance(n, int) for n in g.nodes)
 
-    def test_term_names_are_correct(self):
-        df = extract_classes(SAMPLE_OBO)
-        row = df[df["id"] == "CHEBI:1"].iloc[0]
-        assert row["name"] == "compound A"
+    def test_expected_nodes_present(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert set(g.nodes) == {1, 2, 3, 5}
 
-    def test_obsolete_flag(self):
-        df = extract_classes(SAMPLE_OBO)
-        assert df[df["id"] == "CHEBI:4"].iloc[0]["is_obsolete"]
-        assert not df[df["id"] == "CHEBI:1"].iloc[0]["is_obsolete"]
+    def test_obsolete_term_excluded(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert 4 not in g.nodes
 
-    def test_definition_is_extracted(self):
-        df = extract_classes(SAMPLE_OBO)
-        row = df[df["id"] == "CHEBI:1"].iloc[0]
-        assert "test compound" in row["definition"]
+    def test_node_name_attribute(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert g.nodes[1]["name"] == "compound A"
+        assert g.nodes[2]["name"] == "compound B"
 
-    def test_typedef_stanzas_are_excluded(self):
-        df = extract_classes(SAMPLE_OBO)
-        assert "has_role" not in df["id"].values
+    def test_smiles_extracted_from_property_value(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert g.nodes[1]["smiles"] == "C"
 
+    def test_smiles_none_when_absent(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert g.nodes[2]["smiles"] is None
 
-class TestExtractRelations:
-    def test_returns_dataframe_with_expected_columns(self):
-        df = extract_relations(SAMPLE_OBO)
-        assert list(df.columns) == ["source_id", "target_id", "relation_type"]
+    def test_subset_extracted(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert g.nodes[3]["subset"] == "3_STAR"
 
-    def test_isa_relations_extracted(self):
-        df = extract_relations(SAMPLE_OBO)
-        isa = df[df["relation_type"] == "is_a"]
-        assert len(isa) == 2
+    def test_subset_none_when_absent(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        assert g.nodes[1]["subset"] is None
 
-    def test_typed_relation_extracted(self):
-        df = extract_relations(SAMPLE_OBO)
-        has_role = df[df["relation_type"] == "has_role"]
-        assert len(has_role) == 1
-        assert has_role.iloc[0]["source_id"] == "CHEBI:1"
-        assert has_role.iloc[0]["target_id"] == "CHEBI:3"
+    def test_isa_edge_present(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        # CHEBI:1 is_a CHEBI:2
+        assert g.has_edge(1, 2)
+        assert g.edges[1, 2]["relation"] == "is_a"
 
-    def test_isa_source_and_target(self):
-        df = extract_relations(SAMPLE_OBO)
-        isa = df[df["relation_type"] == "is_a"]
-        sources = set(isa["source_id"])
-        assert "CHEBI:1" in sources
-        assert "CHEBI:2" in sources
+    def test_has_part_edge_present(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        # CHEBI:1 has_part CHEBI:3
+        assert g.has_edge(1, 3)
+        assert g.edges[1, 3]["relation"] == "has_part"
 
-    def test_total_relations_count(self):
-        df = extract_relations(SAMPLE_OBO)
-        assert len(df) == 3
+    def test_total_edge_count(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        # 1->2 (is_a), 1->3 (has_part), 2->5 (is_a)
+        assert len(g.edges) == 3
+
+    def test_typedef_stanza_excluded(self):
+        g = build_chebi_graph(SAMPLE_OBO)
+        # "has_part" Typedef id is not numeric CHEBI ID, should not appear as node
+        assert "has_part" not in g.nodes
+
+    def test_xref_lines_do_not_break_parsing(self, tmp_path):
+        obo_with_xrefs = tmp_path / "xref.obo"
+        obo_with_xrefs.write_text(
+            "format-version: 1.2\n[Term]\nid: CHEBI:10\nname: test\nxref: Reaxys:123456\n"
+        )
+        g = build_chebi_graph(obo_with_xrefs)
+        assert 10 in g.nodes

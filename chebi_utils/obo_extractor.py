@@ -1,103 +1,113 @@
-"""Extract classes and relations from ChEBI OBO ontology files."""
+"""Extract ChEBI ontology data using fastobo and build a networkx graph."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
+import fastobo
+import networkx as nx
 
 
-def _parse_obo_stanzas(filepath: str | Path) -> list[dict[str, list[str]]]:
-    """Parse an OBO file and return a list of stanza dicts."""
-    stanzas: list[dict[str, list[str]]] = []
-    current_stanza: dict[str, list[str]] | None = None
+def _chebi_id_to_int(chebi_id: str) -> int:
+    """Convert 'CHEBI:123' to 123."""
+    return int(chebi_id.split(":")[1])
 
+
+def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
+    """Extract data from a single fastobo TermFrame.
+
+    Returns
+    -------
+    dict or None
+        Parsed term data, or ``None`` if the term is marked as obsolete.
+    """
+    parents: list[int] = []
+    has_part: set[int] = set()
+    name: str | None = None
+    smiles: str | None = None
+    subset: str | None = None
+
+    for clause in doc:
+        if isinstance(clause, fastobo.term.IsObsoleteClause):
+            if clause.obsolete:
+                return None
+        elif isinstance(clause, fastobo.term.PropertyValueClause):
+            pv = clause.property_value
+            if str(pv.relation) in (
+                "chemrof:smiles_string",
+                "http://purl.obolibrary.org/obo/chebi/smiles",
+            ):
+                smiles = pv.value
+        elif isinstance(clause, fastobo.term.SynonymClause):
+            if "SMILES" in clause.raw_value() and smiles is None:
+                smiles = clause.raw_value().split('"')[1]
+        elif isinstance(clause, fastobo.term.RelationshipClause):
+            if str(clause.typedef) == "has_part":
+                has_part.add(_chebi_id_to_int(str(clause.term)))
+        elif isinstance(clause, fastobo.term.IsAClause):
+            parents.append(_chebi_id_to_int(str(clause.term)))
+        elif isinstance(clause, fastobo.term.NameClause):
+            name = str(clause.name)
+        elif isinstance(clause, fastobo.term.SubsetClause):
+            subset = str(clause.subset)
+
+    return {
+        "id": _chebi_id_to_int(str(doc.id)),
+        "parents": parents,
+        "has_part": has_part,
+        "name": name,
+        "smiles": smiles,
+        "subset": subset,
+    }
+
+
+def build_chebi_graph(filepath: str | Path) -> nx.DiGraph:
+    """Parse a ChEBI OBO file and build a directed graph of ontology terms.
+
+    ``xref:`` lines are stripped before parsing as they can cause fastobo
+    errors on some ChEBI releases.  Only non-obsolete CHEBI-prefixed terms
+    are included.
+
+    **Nodes** are integer CHEBI IDs (e.g. ``1`` for ``CHEBI:1``) with
+    attributes ``name``, ``smiles``, and ``subset``.
+
+    **Edges** carry a ``relation`` attribute and represent:
+
+    - ``is_a`` — directed from child to parent
+    - ``has_part`` — directed from whole to part
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to the ChEBI OBO file.
+
+    Returns
+    -------
+    nx.DiGraph
+        Directed graph of ChEBI ontology terms and their relationships.
+    """
     with open(filepath, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("!"):
-                continue
-            if line.startswith("["):
-                if current_stanza is not None:
-                    stanzas.append(current_stanza)
-                stanza_type = line.strip("[]")
-                current_stanza = {"_type": [stanza_type]}
-            elif current_stanza is not None and ":" in line:
-                key, _, value = line.partition(":")
-                current_stanza.setdefault(key.strip(), []).append(value.strip())
+        content = "\n".join(line for line in f if not line.startswith("xref:"))
 
-    if current_stanza is not None:
-        stanzas.append(current_stanza)
+    graph: nx.DiGraph = nx.DiGraph()
 
-    return stanzas
-
-
-def extract_classes(filepath: str | Path) -> pd.DataFrame:
-    """Extract ontology classes (terms) from a ChEBI OBO file.
-
-    Parameters
-    ----------
-    filepath : str or Path
-        Path to the ChEBI OBO file.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with columns: id, name, definition, is_obsolete.
-    """
-    stanzas = _parse_obo_stanzas(filepath)
-    rows = []
-    for stanza in stanzas:
-        if stanza.get("_type", [None])[0] != "Term":
-            continue
-        row = {
-            "id": stanza.get("id", [None])[0],
-            "name": stanza.get("name", [None])[0],
-            "definition": stanza.get("def", [None])[0],
-            "is_obsolete": stanza.get("is_obsolete", ["false"])[0] == "true",
-        }
-        rows.append(row)
-    return pd.DataFrame(rows, columns=["id", "name", "definition", "is_obsolete"])
-
-
-def extract_relations(filepath: str | Path) -> pd.DataFrame:
-    """Extract class relations from a ChEBI OBO file.
-
-    Parameters
-    ----------
-    filepath : str or Path
-        Path to the ChEBI OBO file.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with columns: source_id, target_id, relation_type.
-    """
-    stanzas = _parse_obo_stanzas(filepath)
-    rows = []
-
-    for stanza in stanzas:
-        if stanza.get("_type", [None])[0] != "Term":
-            continue
-        source_id = stanza.get("id", [None])[0]
-        if source_id is None:
+    for frame in fastobo.loads(content):
+        if not (
+            frame and isinstance(frame.id, fastobo.id.PrefixedIdent) and frame.id.prefix == "CHEBI"
+        ):
             continue
 
-        for is_a_val in stanza.get("is_a", []):
-            target_id = is_a_val.split("!")[0].strip()
-            rows.append({"source_id": source_id, "target_id": target_id, "relation_type": "is_a"})
+        term = _term_data(frame)
+        if term is None:
+            continue
 
-        for rel_val in stanza.get("relationship", []):
-            parts = rel_val.split()
-            if len(parts) >= 2:
-                rel_type = parts[0]
-                target_id = parts[1].split("!")[0].strip()
-                rows.append(
-                    {
-                        "source_id": source_id,
-                        "target_id": target_id,
-                        "relation_type": rel_type,
-                    }
-                )
+        node_id = term["id"]
+        graph.add_node(node_id, name=term["name"], smiles=term["smiles"], subset=term["subset"])
 
-    return pd.DataFrame(rows, columns=["source_id", "target_id", "relation_type"])
+        for parent_id in term["parents"]:
+            graph.add_edge(node_id, parent_id, relation="is_a")
+
+        for part_id in term["has_part"]:
+            graph.add_edge(node_id, part_id, relation="has_part")
+
+    return graph
