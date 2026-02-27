@@ -115,6 +115,7 @@ def build_chebi_graph(filepath: str | Path) -> nx.DiGraph:
 
     return graph
 
+
 def get_hierarchy_subgraph(chebi_graph: nx.DiGraph) -> nx.DiGraph:
     """Subgraph of ChEBI including only edges corresponding to hierarchical relations (is_a). Also removes nodes that are not connected by any is_a edges to other nodes."""
     return chebi_graph.edge_subgraph(

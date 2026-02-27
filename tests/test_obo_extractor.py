@@ -41,7 +41,9 @@ class TestBuildChebiGraph:
 
     def test_smiles_extracted_from_property_value(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        expected = "COc1cc2c3cc1Oc1c(O)c(OC)cc4c1[C@H](Cc1ccc(O)c(c1)Oc1ccc(cc1)C[C@@H]3N(C)CC2)N(C)CC4"
+        expected = (
+            "COc1cc2c3cc1Oc1c(O)c(OC)cc4c1[C@H](Cc1ccc(O)c(c1)Oc1ccc(cc1)C[C@@H]3N(C)CC2)N(C)CC4"
+        )
         assert g.nodes["10"]["smiles"] == expected
 
     def test_smiles_none_when_absent(self):
