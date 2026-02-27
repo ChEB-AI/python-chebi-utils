@@ -36,6 +36,7 @@ def _count_molecules_per_class(closure: nx.DiGraph, mol_ids: set[str]) -> dict[s
         counts[mid] += 1
     return dict(counts)
 
+
 def build_labeled_dataset(
     chebi_graph: nx.DiGraph,
     molecules: pd.DataFrame,

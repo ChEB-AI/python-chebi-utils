@@ -166,6 +166,7 @@ def extract_molecules(filepath: str | Path) -> pd.DataFrame:
 
     return df
 
+
 if __name__ == "__main__":
     df = extract_molecules("data/chebi.sdf.gz")
     print(df.head())

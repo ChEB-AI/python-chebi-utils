@@ -56,6 +56,7 @@ def simple_molecules() -> pd.DataFrame:
         }
     )
 
+
 class TestBuildLabeledDataset:
     def test_returns_dataframe_with_base_columns(self, simple_graph, simple_molecules):
         df, labels = build_labeled_dataset(simple_graph, simple_molecules, min_molecules=2)
