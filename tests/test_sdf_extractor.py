@@ -24,7 +24,7 @@ class TestExtractMolecules:
 
     def test_chebi_ids_correct(self):
         df = extract_molecules(SAMPLE_SDF)
-        assert set(df["chebi_id"]) == {"CHEBI:1", "CHEBI:2"}
+        assert set(df["chebi_id"]) == {"1", "2"}
 
     def test_name_column_present(self):
         df = extract_molecules(SAMPLE_SDF)
@@ -57,8 +57,8 @@ class TestExtractMolecules:
 
     def test_mol_atom_counts(self):
         df = extract_molecules(SAMPLE_SDF)
-        row1 = df[df["chebi_id"] == "CHEBI:1"].iloc[0]
-        row2 = df[df["chebi_id"] == "CHEBI:2"].iloc[0]
+        row1 = df[df["chebi_id"] == "1"].iloc[0]
+        row2 = df[df["chebi_id"] == "2"].iloc[0]
         assert row1["mol"].GetNumAtoms() == 1  # methane: 1 C
         assert row2["mol"].GetNumAtoms() == 2  # ethane: 2 C
 
@@ -70,7 +70,7 @@ class TestExtractMolecules:
 
     def test_molecule_properties(self):
         df = extract_molecules(SAMPLE_SDF)
-        row = df[df["chebi_id"] == "CHEBI:1"].iloc[0]
+        row = df[df["chebi_id"] == "1"].iloc[0]
         assert row["name"] == "compound A"
         assert row["smiles"] == "C"
         assert row["formula"] == "CH4"
@@ -81,7 +81,7 @@ class TestExtractMolecules:
             f_out.write(f_in.read())
         df = extract_molecules(gz_path)
         assert len(df) == 2
-        assert set(df["chebi_id"]) == {"CHEBI:1", "CHEBI:2"}
+        assert set(df["chebi_id"]) == {"1", "2"}
         assert all(isinstance(m, rdchem.Mol) for m in df["mol"])
 
     def test_empty_sdf_returns_empty_dataframe(self, tmp_path):
@@ -90,11 +90,11 @@ class TestExtractMolecules:
         df = extract_molecules(empty_sdf)
         assert df.empty
 
-    def test_unparseable_molblock_gives_none(self, tmp_path, recwarn):
+    def test_unparseable_molblock_excluded(self, tmp_path, recwarn):
         bad_sdf = tmp_path / "bad.sdf"
         bad_sdf.write_text(
             "bad_mol\n\n  0  0  0  0  0  0  0  0  0  0999 V2000\nM  END\n"
             "> <ChEBI ID>\nCHEBI:99\n\n$$$$\n"
         )
         df = extract_molecules(bad_sdf)
-        assert df.iloc[0]["mol"] is None
+        assert len(df) == 0

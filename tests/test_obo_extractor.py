@@ -18,9 +18,10 @@ class TestBuildChebiGraph:
         assert isinstance(g, nx.DiGraph)
 
     def test_correct_number_of_nodes(self):
-        # CHEBI:27189 is obsolete -> excluded; 3 explicit + 1 implicit (24921) = 4
+        # CHEBI:27189 is obsolete -> excluded;
+        # 4 explicit + 5 implicit (superclasses and relation targets) = 9
         g = build_chebi_graph(SAMPLE_OBO)
-        assert len(g.nodes) == 4
+        assert len(g.nodes) == 9
 
     def test_node_ids_are_strings(self):
         g = build_chebi_graph(SAMPLE_OBO)
@@ -28,7 +29,17 @@ class TestBuildChebiGraph:
 
     def test_expected_nodes_present(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert set(g.nodes) == {"10", "133004", "22750", "24921"}
+        assert set(g.nodes) == {
+            "10",
+            "133004",
+            "22750",
+            "24921",
+            "28017",
+            "75771",
+            "28057",
+            "28102",
+            "37163",
+        }
 
     def test_obsolete_term_excluded(self):
         g = build_chebi_graph(SAMPLE_OBO)
@@ -71,8 +82,8 @@ class TestBuildChebiGraph:
 
     def test_total_edge_count(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        # 10->133004 (is_a), 133004->22750 (is_a), 22750->24921 (is_a)
-        assert len(g.edges) == 3
+        # 10->133004 (is_a), 133004->22750 (is_a), 22750->24921 (is_a), ...
+        assert len(g.edges) == 7
 
     def test_xref_lines_do_not_break_parsing(self, tmp_path):
         obo_with_xrefs = tmp_path / "xref.obo"
