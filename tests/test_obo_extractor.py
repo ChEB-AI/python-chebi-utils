@@ -29,8 +29,17 @@ class TestBuildChebiGraph:
 
     def test_expected_nodes_present(self):
         g = build_chebi_graph(SAMPLE_OBO)
-        assert set(g.nodes) == {"10", "133004", "22750", "24921",
-                                "28017", '75771', '28057', '28102', '37163'}
+        assert set(g.nodes) == {
+            "10",
+            "133004",
+            "22750",
+            "24921",
+            "28017",
+            "75771",
+            "28057",
+            "28102",
+            "37163",
+        }
 
     def test_obsolete_term_excluded(self):
         g = build_chebi_graph(SAMPLE_OBO)
