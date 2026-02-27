@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from chebi_utils.splitter import create_splits
+from chebi_utils.splitter import create_multilabel_splits, create_splits
 
 
 @pytest.fixture
@@ -103,3 +103,89 @@ class TestCreateSplitsStratified:
         splits1 = create_splits(sample_df, stratify_col="category", seed=42)
         splits2 = create_splits(sample_df, stratify_col="category", seed=42)
         pd.testing.assert_frame_equal(splits1["train"], splits2["train"])
+
+
+@pytest.fixture
+def multilabel_df():
+    """DataFrame with multilabel 'labels' column (200 rows)."""
+    all_labels = [["A"], ["B"], ["C"], ["A", "B"], ["A", "C"], ["B", "C"]]
+    labels = [all_labels[i % len(all_labels)] for i in range(200)]
+    return pd.DataFrame(
+        {
+            "id": [f"CHEBI:{i}" for i in range(200)],
+            "labels": labels,
+        }
+    )
+
+
+@pytest.fixture
+def singlelabel_df():
+    """DataFrame with single-label 'labels' column."""
+    return pd.DataFrame(
+        {
+            "id": [f"CHEBI:{i}" for i in range(200)],
+            "labels": [["A"] if i % 2 == 0 else ["B"] for i in range(200)],
+        }
+    )
+
+
+class TestCreateMultilabelSplits:
+    def test_returns_three_splits(self, multilabel_df):
+        splits = create_multilabel_splits(multilabel_df, labels_col="labels")
+        assert set(splits.keys()) == {"train", "val", "test"}
+
+    def test_sizes_sum_to_total(self, multilabel_df):
+        splits = create_multilabel_splits(multilabel_df, labels_col="labels")
+        assert sum(len(v) for v in splits.values()) == len(multilabel_df)
+
+    def test_no_overlap(self, multilabel_df):
+        splits = create_multilabel_splits(multilabel_df, labels_col="labels")
+        train_ids = set(splits["train"]["id"])
+        val_ids = set(splits["val"]["id"])
+        test_ids = set(splits["test"]["id"])
+        assert train_ids.isdisjoint(val_ids)
+        assert train_ids.isdisjoint(test_ids)
+        assert val_ids.isdisjoint(test_ids)
+
+    def test_all_rows_covered(self, multilabel_df):
+        splits = create_multilabel_splits(multilabel_df, labels_col="labels")
+        all_ids = set(splits["train"]["id"]) | set(splits["val"]["id"]) | set(splits["test"]["id"])
+        assert all_ids == set(multilabel_df["id"])
+
+    def test_reproducible_with_same_seed(self, multilabel_df):
+        splits1 = create_multilabel_splits(multilabel_df, labels_col="labels", seed=7)
+        splits2 = create_multilabel_splits(multilabel_df, labels_col="labels", seed=7)
+        pd.testing.assert_frame_equal(splits1["train"], splits2["train"])
+
+    def test_different_seeds_give_different_splits(self, multilabel_df):
+        splits1 = create_multilabel_splits(multilabel_df, labels_col="labels", seed=1)
+        splits2 = create_multilabel_splits(multilabel_df, labels_col="labels", seed=2)
+        assert not splits1["train"]["id"].equals(splits2["train"]["id"])
+
+    def test_approximate_split_sizes(self, multilabel_df):
+        splits = create_multilabel_splits(
+            multilabel_df, labels_col="labels", train_ratio=0.8, val_ratio=0.1, test_ratio=0.1
+        )
+        n = len(multilabel_df)
+        assert abs(len(splits["test"]) - int(n * 0.1)) <= 2
+        assert abs(len(splits["val"]) - int(n * 0.1)) <= 2
+
+    def test_invalid_ratios_raise_error(self, multilabel_df):
+        with pytest.raises(ValueError, match="must equal 1.0"):
+            create_multilabel_splits(
+                multilabel_df, labels_col="labels", train_ratio=0.5, val_ratio=0.3, test_ratio=0.3
+            )
+
+    def test_missing_labels_col_raises_error(self, multilabel_df):
+        with pytest.raises(ValueError, match="not found in DataFrame"):
+            create_multilabel_splits(multilabel_df, labels_col="nonexistent")
+
+    def test_singlelabel_path(self, singlelabel_df):
+        """Single-label lists should use StratifiedShuffleSplit without error."""
+        splits = create_multilabel_splits(singlelabel_df, labels_col="labels")
+        assert sum(len(v) for v in splits.values()) == len(singlelabel_df)
+        train_ids = set(splits["train"]["id"])
+        val_ids = set(splits["val"]["id"])
+        test_ids = set(splits["test"]["id"])
+        assert train_ids.isdisjoint(val_ids)
+        assert train_ids.isdisjoint(test_ids)
