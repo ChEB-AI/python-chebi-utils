@@ -9,6 +9,8 @@ from pathlib import Path
 import pandas as pd
 from rdkit import Chem
 
+from chebi_utils.obo_extractor import _chebi_id_to_str
+
 
 def _sanitize_molecule(mol: Chem.Mol) -> Chem.Mol:
     """Sanitize molecule, mirroring the ChEBI molecule processing."""
@@ -157,5 +159,13 @@ def extract_molecules(filepath: str | Path) -> pd.DataFrame:
 
     chebi_ids = df["chebi_id"].tolist() if "chebi_id" in df.columns else [None] * len(df)
     df["mol"] = [_parse_molblock(mb, cid) for mb, cid in zip(molblocks, chebi_ids, strict=False)]
+    df["chebi_id"] = df["chebi_id"].apply(_chebi_id_to_str)
+
+    # exclude records without a valid mol, but keep the same columns for consistency
+    df = df[df["mol"].notna()]
 
     return df
+
+if __name__ == "__main__":
+    df = extract_molecules("data/chebi.sdf.gz")
+    print(df.head())

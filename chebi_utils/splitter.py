@@ -54,28 +54,6 @@ def create_splits(
     return _random_split(df, train_ratio, val_ratio, test_ratio, rng)
 
 
-def _random_split(
-    df: pd.DataFrame,
-    train_ratio: float,
-    val_ratio: float,
-    test_ratio: float,  # noqa: ARG001
-    rng: np.random.Generator,
-) -> dict[str, pd.DataFrame]:
-    indices = rng.permutation(len(df))
-    n_train = int(len(df) * train_ratio)
-    n_val = int(len(df) * val_ratio)
-
-    train_idx = indices[:n_train]
-    val_idx = indices[n_train : n_train + n_val]
-    test_idx = indices[n_train + n_val :]
-
-    return {
-        "train": df.iloc[train_idx].reset_index(drop=True),
-        "val": df.iloc[val_idx].reset_index(drop=True),
-        "test": df.iloc[test_idx].reset_index(drop=True),
-    }
-
-
 def _stratified_split(
     df: pd.DataFrame,
     train_ratio: float,
