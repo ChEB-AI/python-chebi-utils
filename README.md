@@ -21,11 +21,11 @@ pip install -e ".[dev]"
 ```python
 from chebi_utils import download_chebi_obo, download_chebi_sdf
 
-obo_path = download_chebi_obo(version=250, dest_dir="data/")   # downloads chebi.obo
-sdf_path = download_chebi_sdf(version=250, dest_dir="data/")   # downloads chebi.sdf.gz
+obo_path = download_chebi_obo(version=248, dest_dir="data/")   # downloads chebi.obo
+sdf_path = download_chebi_sdf(version=248, dest_dir="data/")   # downloads chebi.sdf.gz
 ```
 
-A specific ChEBI release `version` (e.g. `230`, `245`, `250`) must be provided.
+A specific ChEBI release `version` (e.g. `230`, `245`, `248`) must be provided.
 Files are fetched from the [EBI FTP server](https://ftp.ebi.ac.uk/pub/databases/chebi/).
 Versions below 245 are automatically fetched from the legacy archive path.
 
