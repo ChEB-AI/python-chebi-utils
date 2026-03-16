@@ -37,7 +37,7 @@ def test_sdf_url_legacy_version():
     url = _chebi_sdf_url(230)
     assert (
         url
-        == "https://ftp.ebi.ac.uk/pub/databases/chebi/archive/chebi_legacy/archive/rel230/ontology/chebi.obo"
+        == "https://ftp.ebi.ac.uk/pub/databases/chebi/archive/chebi_legacy/archive/rel230/SDF/ChEBI_complete.sdf.gz"
     )
 
 
