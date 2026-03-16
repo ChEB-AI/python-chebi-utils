@@ -16,7 +16,7 @@ def _chebi_obo_url(version: int) -> str:
 
 def _chebi_sdf_url(version: int) -> str:
     if version < _CHEBI_LEGACY_VERSION_THRESHOLD:
-        return f"https://ftp.ebi.ac.uk/pub/databases/chebi/archive/chebi_legacy/archive/rel{version}/ontology/chebi.obo"
+        return f"https://ftp.ebi.ac.uk/pub/databases/chebi/archive/chebi_legacy/archive/rel{version}/SDF/ChEBI_complete.sdf.gz"
     return f"https://ftp.ebi.ac.uk/pub/databases/chebi/archive/rel{version}/SDF/chebi.sdf.gz"
 
 
