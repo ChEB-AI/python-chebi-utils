@@ -24,6 +24,7 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
     parents: list[str] = []
     relations: dict = dict()
     name: str | None = None
+    definition: str | None = None
     smiles: str | None = None
     subset: str | None = None
 
@@ -50,6 +51,8 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
             parents.append(_chebi_id_to_str(str(clause.term)))
         elif isinstance(clause, fastobo.term.NameClause):
             name = str(clause.name)
+        elif isinstance(clause, fastobo.term.DefClause):
+            definition = str(clause.definition)
         elif isinstance(clause, fastobo.term.SubsetClause):
             subset = str(clause.subset)
 
@@ -58,6 +61,7 @@ def _term_data(doc: "fastobo.term.TermFrame") -> dict | None:
         "parents": parents,
         "relations": relations,
         "name": name,
+        "definition": definition,
         "smiles": smiles,
         "subset": subset,
     }
@@ -104,7 +108,13 @@ def build_chebi_graph(filepath: str | Path) -> nx.DiGraph:
             continue
 
         node_id = term["id"]
-        graph.add_node(node_id, name=term["name"], smiles=term["smiles"], subset=term["subset"])
+        graph.add_node(
+            node_id,
+            name=term["name"],
+            definition=term["definition"],
+            smiles=term["smiles"],
+            subset=term["subset"],
+        )
 
         for parent_id in term["parents"]:
             graph.add_edge(node_id, parent_id, relation="is_a")
