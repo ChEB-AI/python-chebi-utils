@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gzip
+from typing import Optional
 import warnings
 from pathlib import Path
 
@@ -12,21 +13,16 @@ from rdkit import Chem
 from chebi_utils.obo_extractor import _chebi_id_to_str
 
 
-def _sanitize_molecule(mol: Chem.Mol) -> Chem.Mol:
-    """Sanitize molecule, mirroring the ChEBI molecule processing."""
+def _sanitize_molecule(mol: Chem.Mol) -> Optional[Chem.Mol]:
+    """Sanitize molecule"""
     from chembl_structure_pipeline.standardizer import update_mol_valences
 
     mol = update_mol_valences(mol)
-    Chem.SanitizeMol(
-        mol,
-        sanitizeOps=Chem.SanitizeFlags.SANITIZE_FINDRADICALS
-        | Chem.SanitizeFlags.SANITIZE_KEKULIZE
-        | Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
-        | Chem.SanitizeFlags.SANITIZE_SETCONJUGATION
-        | Chem.SanitizeFlags.SANITIZE_SETHYBRIDIZATION
-        | Chem.SanitizeFlags.SANITIZE_SYMMRINGS,
-        catchErrors=True,
-    )
+    try:
+        Chem.SanitizeMol(mol)
+    except Exception as e:
+        warnings.warn(f"Failed to sanitize molecule: {e}", stacklevel=2)
+        mol = None
     return mol
 
 
@@ -53,6 +49,9 @@ def _parse_molblock(molblock: str, chebi_id: str | None = None) -> Chem.Mol | No
         warnings.warn(f"Failed to parse molblock for {chebi_id}", stacklevel=2)
         return None
     mol = _sanitize_molecule(mol)
+    if mol is None:
+        warnings.warn(f"Failed to sanitize molblock for {chebi_id}", stacklevel=2)
+    
     return mol
 
 
