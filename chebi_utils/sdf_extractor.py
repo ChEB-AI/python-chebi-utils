@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import gzip
-from typing import Optional
 import warnings
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 from rdkit import Chem
@@ -51,7 +51,7 @@ def _parse_molblock(molblock: str, chebi_id: str | None = None) -> Chem.Mol | No
     mol = _sanitize_molecule(mol)
     if mol is None:
         warnings.warn(f"Failed to sanitize molblock for {chebi_id}", stacklevel=2)
-    
+
     return mol
 
 
