@@ -83,7 +83,10 @@ def build_chebi_graph(filepath: str | Path, top_class: str | None = "23367") -> 
     filepath : str or Path
         Path to the ChEBI OBO file.
     top_class : str or None
-        CHEBI ID of the top-class (default "23367" for "molecular entity"). This will only return direct or indirect subclasses of the top-class (excluding the top-class).
+        CHEBI ID of the top-class (default "23367" for "molecular entity").
+        This will only return direct or indirect subclasses of the
+        top-class (excluding the top-class). If ``top_class`` is not
+        present in the parsed graph, the full graph is returned.
         If None, the full graph is returned without subgraph extraction.
 
     Returns
@@ -119,10 +122,13 @@ def build_chebi_graph(filepath: str | Path, top_class: str | None = "23367") -> 
     if top_class is None:
         return graph
 
-    molecular_entity_subgraph = graph.subgraph(nx.ancestors(get_hierarchy_subgraph(graph), top_class))
-    assert isinstance(molecular_entity_subgraph, nx.DiGraph)
-    
-    return molecular_entity_subgraph
+    hierarchy = get_hierarchy_subgraph(graph)
+    if top_class not in hierarchy:
+        return graph
+
+    chebi_subgraph = graph.subgraph(nx.ancestors(hierarchy, top_class))
+    assert isinstance(chebi_subgraph, nx.DiGraph)
+    return chebi_subgraph
 
 
 def get_hierarchy_subgraph(chebi_graph: nx.DiGraph) -> nx.DiGraph:
@@ -131,6 +137,7 @@ def get_hierarchy_subgraph(chebi_graph: nx.DiGraph) -> nx.DiGraph:
     return chebi_graph.edge_subgraph(
         (u, v) for u, v, d in chebi_graph.edges(data=True) if d.get("relation") == "is_a"
     )
+
 
 if __name__ == "__main__":
     import argparse
