@@ -109,6 +109,12 @@ ruff check .
 ruff format --check .
 ```
 
+To run the same Ruff checks automatically before each commit:
+
+```bash
+pre-commit install
+```
+
 ## CI/CD
 
 A GitHub Actions workflow (`.github/workflows/ci.yml`) automatically runs ruff linting and the full test suite on every push and pull request across Python 3.10, 3.11, and 3.12.
