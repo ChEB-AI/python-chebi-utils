@@ -37,18 +37,8 @@ def mol_to_fol_atoms(
     """
     atom_extensions: dict[str, list] = {}
 
-    # Bond predicates (symmetric)
-    for bond in mol.GetBonds():
-        left = bond.GetBeginAtomIdx()
-        right = bond.GetEndAtomIdx()
-
-        bond_pred = f"b{bond.GetBondType()}"
-        atom_extensions.setdefault(bond_pred, []).extend([(left, right), (right, left)])
-        atom_extensions.setdefault("has_bond_to", []).extend([(left, right), (right, left)])
-
-        if bond.GetStereo() != Chem.BondStereo.STEREONONE:
-            stereo_pred = f"b{bond.GetStereo().name}"
-            atom_extensions.setdefault(stereo_pred, []).extend([(left, right), (right, left)])
+    atom_extensions.update(get_atom_properties(mol))
+    atom_extensions.update(get_bond_properties(mol))
 
     if with_rings:
         atom_extensions.update(get_rings(mol))
@@ -56,7 +46,6 @@ def mol_to_fol_atoms(
     if with_steroids:
         atom_extensions.update(get_steroid_positions(mol))
 
-    # Molecule-level (global) properties
     mol_extensions = get_molecule_level_properties(mol)
 
     return atom_extensions, mol_extensions
@@ -100,7 +89,25 @@ def get_atom_properties(mol: Chem.Mol) -> dict[str, list]:
     return atom_extensions
 
 
+def get_bond_properties(mol: Chem.Mol) -> dict[str, list]:
+    # Bond predicates (symmetric)
+    atom_extensions: dict[str, list] = {}
+    for bond in mol.GetBonds():
+        left = bond.GetBeginAtomIdx()
+        right = bond.GetEndAtomIdx()
+
+        bond_pred = f"b{bond.GetBondType()}"
+        atom_extensions.setdefault(bond_pred, []).extend([(left, right), (right, left)])
+        atom_extensions.setdefault("has_bond_to", []).extend([(left, right), (right, left)])
+
+        if bond.GetStereo() != Chem.BondStereo.STEREONONE:
+            stereo_pred = f"b{bond.GetStereo().name}"
+            atom_extensions.setdefault(stereo_pred, []).extend([(left, right), (right, left)])
+    return atom_extensions
+
+
 def get_molecule_level_properties(mol: Chem.Mol) -> set[str]:
+    # Molecule-level (global) properties (either true or false for the whole molecule)
     mol_extensions: set[str] = set()
     net_charge = Chem.GetFormalCharge(mol)
     if net_charge > 0:
