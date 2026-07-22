@@ -160,12 +160,14 @@ def extract_molecules(filepath: str | Path) -> pd.DataFrame:
     df["mol"] = [_parse_molblock(mb, cid) for mb, cid in zip(molblocks, chebi_ids, strict=False)]
     df["chebi_id"] = df["chebi_id"].apply(_chebi_id_to_str)
 
-    # exclude records without a valid mol, but keep the same columns for consistency
+    # exclude records without a valid molecule
     df = df[df["mol"].notna()]
+    # some molecule records are valid, but have no atoms (e.g. )
+    df[[mol.GetNumAtoms() > 0 for mol in df["mol"]]]
 
     return df
 
 
 if __name__ == "__main__":
-    df = extract_molecules("data/chebi.sdf.gz")
+    df = extract_molecules("chebi.sdf.gz")
     print(df.head())
