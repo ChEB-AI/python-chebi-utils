@@ -141,8 +141,22 @@ def build_chebi_graph(filepath: str | Path, top_class: str | None = "23367") -> 
 
 
 def get_hierarchy_subgraph(chebi_graph: nx.DiGraph) -> nx.DiGraph:
-    """Subgraph of ChEBI including only edges corresponding to hierarchical relations (is_a).
-    Also removes nodes that are not connected by any is_a edges to other nodes."""
+    """Extract the ``is_a`` hierarchy of a ChEBI graph as a subgraph.
+
+    Keeps only edges whose ``relation`` attribute is ``is_a``, and drops nodes
+    that are not connected to any other node by an ``is_a`` edge.
+
+    Parameters
+    ----------
+    chebi_graph : nx.DiGraph
+        Full ChEBI ontology graph from :func:`build_chebi_graph`.
+
+    Returns
+    -------
+    nx.DiGraph
+        Subgraph containing only ``is_a`` edges (child → parent) and the nodes
+        they connect.
+    """
     return nx.DiGraph(
         chebi_graph.edge_subgraph(
             (u, v) for u, v, d in chebi_graph.edges(data=True) if d.get("relation") == "is_a"

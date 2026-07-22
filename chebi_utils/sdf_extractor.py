@@ -131,6 +131,13 @@ def extract_molecules(filepath: str | Path) -> pd.DataFrame:
         DataFrame with one row per molecule. Columns depend on the properties
         present in the file. Common columns (renamed for convenience):
         chebi_id, name, inchi, inchikey, smiles, formula, charge, mass, mol.
+
+    Notes
+    -----
+    Records that cannot be parsed into a molecule are dropped. Records that
+    parse into a valid molecule but contain no atoms are also dropped (e.g.
+    CHEBI:192499 in v251, cf.
+    https://github.com/ebi-chebi/ChEBI/issues/4915).
     """
     rows = []
     molblocks = []
@@ -160,9 +167,7 @@ def extract_molecules(filepath: str | Path) -> pd.DataFrame:
     df["mol"] = [_parse_molblock(mb, cid) for mb, cid in zip(molblocks, chebi_ids, strict=False)]
     df["chebi_id"] = df["chebi_id"].apply(_chebi_id_to_str)
 
-    # exclude records without a valid molecule
     df = df[df["mol"].notna()]
-    # some molecule records are valid, but have no atoms (e.g. CHEBI:192499 in v251, cf. https://github.com/ebi-chebi/ChEBI/issues/4915)
     df = df[[mol.GetNumAtoms() > 0 for mol in df["mol"]]]
 
     return df
