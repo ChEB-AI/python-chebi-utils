@@ -162,8 +162,8 @@ def extract_molecules(filepath: str | Path) -> pd.DataFrame:
 
     # exclude records without a valid molecule
     df = df[df["mol"].notna()]
-    # some molecule records are valid, but have no atoms (e.g. )
-    df[[mol.GetNumAtoms() > 0 for mol in df["mol"]]]
+    # some molecule records are valid, but have no atoms (e.g. CHEBI:192499 in v251, cf. https://github.com/ebi-chebi/ChEBI/issues/4915)
+    df = df[[mol.GetNumAtoms() > 0 for mol in df["mol"]]]
 
     return df
 
