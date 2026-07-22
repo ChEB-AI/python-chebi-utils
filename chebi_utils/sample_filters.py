@@ -14,9 +14,11 @@ def get_closest_negatives(
 
     Performs a breadth-first walk outward from ``target_id`` over the undirected
     ``is_a`` hierarchy, collecting samples that are subclasses of the visited
-    neighbours (but not of ``target_id`` itself). The walk aims to reach
-    ``min_samples``, then keeps collecting further-out (non-sibling) samples only
-    until ``max_samples`` is reached.
+    neighbours (but not of ``target_id`` itself). The walk expands outward until
+    it reaches ``min_samples``. If ``min_samples`` is reached while still
+    processing the immediate neighbours of ``target_id``, that neighbour layer is
+    completed; otherwise expansion stops as soon as ``min_samples`` is reached.
+    If ``max_samples`` is set, selection stops once it is reached.
 
     Parameters
     ----------
