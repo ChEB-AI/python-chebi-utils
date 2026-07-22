@@ -1,6 +1,7 @@
 # extract basic (and not so basic) properties from molecules. This is used to construct FOL structures for reasoning tasks on molecules.
 
 from rdkit import Chem
+from rdkit.Chem import Descriptors
 import logging
 
 MAX_RING_SIZE = 8
@@ -157,4 +158,13 @@ def get_steroid_positions(mol: Chem.Mol) -> dict[str, list]:
             iupac = _GONANE_IDX_TO_IUPAC.get(pat_idx)
             if iupac is not None:
                 atom_extensions.setdefault(f"steroid_{iupac}", []).append(atom_idx)
+    return atom_extensions
+
+
+def get_numerical_facts(mol: Chem.Mol) -> dict[str, list]:
+    """Molecular weight and ring size as numerical values. Expresses "this molecule has weight ..." and "this molecule has a ring of size ..." as molecule-integer value relations."""
+    atom_extensions: dict[str, list] = {}
+    atom_extensions["mol_weight"] = [round(Descriptors.MolWt(mol))]
+    for ring in mol.GetRingInfo().AtomRings():
+        atom_extensions.setdefault("ring_size", []).append(len(ring))
     return atom_extensions
