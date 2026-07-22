@@ -51,9 +51,9 @@ def mol_to_fol_atoms(
     -------
     tuple[dict[str, list], set[str]]
         ``(atom_extensions, mol_extensions)`` where:
-        - ``atom_extensions`` is a ``dict[str, list]``: unary predicates map to
-          ``list[int]`` of atom indices; binary predicates map to
-          ``list[tuple[int, int]]`` of (left, right) index pairs.
+        - ``atom_extensions`` maps each predicate name to its extension: unary predicates map
+          to ``list[int]`` of atom indices; relation predicates map to ``list[tuple[int, ...]]``
+          of atom-index tuples (arity depends on the predicate).
         - ``mol_extensions`` is a ``set[str]`` of molecule-level predicate names
           that hold for this molecule (e.g. ``net_charge_positive``).
     """
