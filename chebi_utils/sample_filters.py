@@ -1,4 +1,6 @@
-# functionality for selecting specific sample subsets from the ChEBI dataset
+"""Select specific sample subsets from the ChEBI dataset using the hierarchy."""
+
+import queue
 
 import networkx as nx
 
@@ -8,13 +10,36 @@ from chebi_utils.obo_extractor import get_hierarchy_subgraph
 def get_closest_negatives(
     samples: list[str], chebi_graph: nx.DiGraph, target_id: str, min_samples=25, max_samples=None
 ) -> set[str]:
-    # from the list of samples, find those that are not subclasses of the target_id, but close
-    # to it in the hierarchy.
-    # goal: reach min_samples, but continue collecting samples (until max_samples) if they are
-    # siblings.
+    """Find samples close to a target class in the hierarchy but not below it.
+
+    Performs a breadth-first walk outward from ``target_id`` over the undirected
+    ``is_a`` hierarchy, collecting samples that are subclasses of the visited
+    neighbours (but not of ``target_id`` itself). The walk aims to reach
+    ``min_samples``, then keeps collecting further-out (non-sibling) samples only
+    until ``max_samples`` is reached.
+
+    Parameters
+    ----------
+    samples : list[str]
+        Candidate ChEBI IDs (as strings) to select from.
+    chebi_graph : nx.DiGraph
+        Full ChEBI ontology graph from :func:`build_chebi_graph`.
+    target_id : str
+        ChEBI ID whose neighbourhood is searched for negatives.
+    min_samples : int
+        Target number of samples to collect before stopping expansion
+        (default 25).
+    max_samples : int or None
+        Hard upper bound on the number of samples collected. ``None`` (default)
+        means no upper bound.
+
+    Returns
+    -------
+    set[str]
+        The selected ChEBI IDs.
+    """
     hierarchy_graph = nx.transitive_closure_dag(get_hierarchy_subgraph(chebi_graph))
     undirected_graph = get_hierarchy_subgraph(chebi_graph).to_undirected()
-    import queue
 
     q = queue.Queue()
     q.put(target_id)
@@ -48,16 +73,27 @@ def get_direct_neighbors(
     chebi_graph: nx.DiGraph,
     target_id: str,
 ) -> tuple[list[str], list[str]]:
-    """
-    Filter samples and sort into two groups:
-    positive: sample is a descendant of the target_id
-    negative: sample is not a descendant of the target_id, but a "direct neighbor" -> a
-        descendant of all direct parents of the target_id.
+    """Filter samples and sort them into positives and direct-neighbor negatives.
 
-    Returns:
-        pos_ids: list of positive validation molecule IDs
-        neg_ids: list of negative validation molecule IDs
-                 (empty when target has no siblings)
+    A sample is *positive* when it is a descendant of ``target_id``, and a
+    *negative* when it is not a descendant of ``target_id`` but is a "direct
+    neighbor" — a descendant of all direct parents of ``target_id``.
+
+    Parameters
+    ----------
+    samples : list[str]
+        Candidate ChEBI IDs (as strings) to filter.
+    chebi_graph : nx.DiGraph
+        Full ChEBI ontology graph from :func:`build_chebi_graph`.
+    target_id : str
+        ChEBI ID defining the positive class.
+
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        ``(pos_ids, neg_ids)`` where ``pos_ids`` are positive molecule IDs and
+        ``neg_ids`` are negative molecule IDs (empty when the target has no
+        siblings).
     """
     hierarchy_graph = nx.transitive_closure_dag(get_hierarchy_subgraph(chebi_graph))
     pos_ids = [str(d) for d in hierarchy_graph.predecessors(target_id) if str(d) in samples]

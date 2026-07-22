@@ -1,6 +1,12 @@
 # python-chebi-utils
 
-Common processing functionality for the ChEBI ontology — download versioned data files, build an ontology graph, extract molecules, assemble labeled datasets, and generate stratified train/val/test splits.
+Common processing functionality for the ChEBI ontology — download versioned data files, build an ontology graph, extract molecules, assemble labeled datasets, generate stratified train/validation/test splits, extract first-order-logic molecular properties, and select hierarchy-aware sample subsets.
+
+> **⚠️ Breaking change in v0.3**
+>
+> `create_multilabel_splits` now returns the validation split under the key
+> `"validation"` instead of `"val"`. Update any code that reads `splits["val"]`
+> to use `splits["validation"]`.
 
 ## Installation
 
@@ -86,7 +92,7 @@ from chebi_utils import create_multilabel_splits
 
 splits = create_multilabel_splits(dataset, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1)
 train_df = splits["train"]
-val_df   = splits["val"]
+val_df   = splits["validation"]   # renamed from "val" in v0.3
 test_df  = splits["test"]
 ```
 
@@ -95,6 +101,51 @@ columns are treated as binary label columns. When multiple label columns are
 present, `MultilabelStratifiedShuffleSplit` from the
 `iterative-stratification` package is used; for a single label column,
 `StratifiedShuffleSplit` from scikit-learn is used.
+
+### Extract molecular properties as first-order-logic facts
+
+```python
+from chebi_utils.extract_properties import mol_to_fol_atoms, get_numerical_facts
+
+atom_facts, mol_facts = mol_to_fol_atoms(mol, with_rings=True, with_steroids=True)
+# atom_facts — dict[str, list] of predicates over atom indices:
+#   unary  (e.g. "c", "charge_p", "has_2_hs", "cip_code_R", "in_ring6", "steroid_3")
+#          → list[int] of atom indices
+#   binary (e.g. "has_bond_to", "bSINGLE", "ring6") → list[tuple[int, ...]]
+# mol_facts — set[str] of molecule-level predicates that hold for the whole
+#             molecule (e.g. "net_charge_neutral", "aromatic")
+
+numerical_facts = get_numerical_facts(mol)
+# {"mol_weight": [<rounded MolWt>], "ring_size": [<size per ring>, …]}
+```
+
+Turns an RDKit `Mol` into a symbolic model suitable for building FOL structures
+for reasoning tasks. Facts cover per-atom element, formal charge, hydrogen
+counts, and CIP chirality; symmetric bond and bond-stereo relations; ring
+membership up to `MAX_RING_SIZE` (8); and steroid-nucleus positions
+(`steroid_1` … `steroid_17`) matched against the gonane core via IUPAC steroid
+numbering. Ring and steroid extraction can be toggled with `with_rings` and
+`with_steroids`.
+
+### Select hierarchy-aware sample subsets
+
+```python
+from chebi_utils.sample_filters import get_closest_negatives, get_direct_neighbors
+
+# Nearest negatives: samples that are NOT subclasses of the target but close to
+# it in the ontology, expanding outward until min_samples (up to max_samples) is met.
+negatives = get_closest_negatives(
+    samples, graph, target_id="15841", min_samples=25, max_samples=None
+)
+
+# Split samples into positives (descendants of the target) and "direct neighbor"
+# negatives (descendants of ALL direct parents of the target, but not the target).
+pos_ids, neg_ids = get_direct_neighbors(samples, graph, target_id="15841")
+```
+
+Useful for constructing balanced positive/negative sets for a given ChEBI class
+by leveraging the `is_a` hierarchy. `samples` is a list of ChEBI IDs (as
+strings) and `graph` is a graph from `build_chebi_graph`.
 
 ## Running Tests
 
