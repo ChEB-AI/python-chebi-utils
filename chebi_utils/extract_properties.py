@@ -76,11 +76,11 @@ def mol_to_fol_atoms(
 def get_atom_properties(mol: Chem.Mol) -> dict[str, list]:
     """Extract per-atom unary predicates.
 
-    For each atom, emits predicates for its element symbol, formal charge
-    (both a sign predicate ``charge_p``/``charge_n``/``charge0`` and an exact
-    predicate ``charge{n}``), total hydrogen count (exact ``has_{n}_hs`` and
-    cumulative ``has_at_least_{n}_hs``), and CIP chirality label
-    (``cip_code_R``/``cip_code_S``) when assigned.
+    For each atom, emits predicates for its element symbol, formal charge (both a sign
+    predicate ``charge_p``/``charge_n``/``charge0`` and an exact predicate
+    ``charge{n}`` for positive charges or ``charge_m{n}`` for negative charges), total
+    hydrogen count (exact ``has_{n}_hs`` and cumulative ``has_at_least_{n}_hs``), and
+    CIP chirality label (``cip_code_R``/``cip_code_S``) when assigned.
 
     Parameters
     ----------
