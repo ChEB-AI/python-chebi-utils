@@ -1,14 +1,17 @@
 # functionality for selecting specific sample subsets from the ChEBI dataset
 
 import networkx as nx
+
 from chebi_utils.obo_extractor import get_hierarchy_subgraph
 
 
 def get_closest_negatives(
     samples: list[str], chebi_graph: nx.DiGraph, target_id: str, min_samples=25, max_samples=None
 ) -> set[str]:
-    # from the list of samples, find those that are not subclasses of the target_id, but close to it in the hierarchy.
-    # goal: reach min_samples, but continue collecting samples (until max_samples) if they are siblings.
+    # from the list of samples, find those that are not subclasses of the target_id, but close
+    # to it in the hierarchy.
+    # goal: reach min_samples, but continue collecting samples (until max_samples) if they are
+    # siblings.
     hierarchy_graph = nx.transitive_closure_dag(get_hierarchy_subgraph(chebi_graph))
     undirected_graph = get_hierarchy_subgraph(chebi_graph).to_undirected()
     import queue
@@ -48,7 +51,8 @@ def get_direct_neighbors(
     """
     Filter samples and sort into two groups:
     positive: sample is a descendant of the target_id
-    negative: sample is not a descendant of the target_id, but a "direct neighbor" -> a descendant of all direct parents of the target_id.
+    negative: sample is not a descendant of the target_id, but a "direct neighbor" -> a
+        descendant of all direct parents of the target_id.
 
     Returns:
         pos_ids: list of positive validation molecule IDs

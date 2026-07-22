@@ -1,8 +1,10 @@
-# extract basic (and not so basic) properties from molecules. This is used to construct FOL structures for reasoning tasks on molecules.
+# extract basic (and not so basic) properties from molecules. This is used to construct
+# FOL structures for reasoning tasks on molecules.
+
+import logging
 
 from rdkit import Chem
 from rdkit.Chem import Descriptors
-import logging
 
 MAX_RING_SIZE = 8
 
@@ -127,7 +129,8 @@ def get_molecule_level_properties(mol: Chem.Mol) -> set[str]:
 
 def get_rings(mol: Chem.Mol) -> dict[str, list]:
     # Rings have two predicates. One for the atom-ring relation and one for the ring itself
-    #   ring{N}(A1, …, AN) – A1…AN form an N-membered ring (all permutations) Only for N <= MAX_RING_SIZE.
+    #   ring{N}(A1, …, AN) – A1…AN form an N-membered ring (all permutations)
+    #                        Only for N <= MAX_RING_SIZE.
     #   in_ring{N}(A)      – A belongs to some N-membered ring (N <= MAX_RING_SIZE).
     #   in_ring(A)         – A belongs to some ring of any size.
     atom_extensions: dict[str, list] = {}
@@ -162,7 +165,11 @@ def get_steroid_positions(mol: Chem.Mol) -> dict[str, list]:
 
 
 def get_numerical_facts(mol: Chem.Mol) -> dict[str, list]:
-    """Molecular weight and ring size as numerical values. Expresses "this molecule has weight ..." and "this molecule has a ring of size ..." as molecule-integer value relations."""
+    """Molecular weight and ring size as numerical values.
+
+    Expresses "this molecule has weight ..." and "this molecule has a ring of size ..."
+    as molecule-integer value relations.
+    """
     atom_extensions: dict[str, list] = {}
     atom_extensions["mol_weight"] = [round(Descriptors.MolWt(mol))]
     for ring in mol.GetRingInfo().AtomRings():
