@@ -44,7 +44,7 @@ def create_multilabel_splits(
     Returns
     -------
     dict
-        Dictionary with keys ``'train'``, ``'val'``, ``'test'``, each
+        Dictionary with keys ``'train'``, ``'validation'``, ``'test'``, each
         containing a DataFrame.
 
     Raises
@@ -104,6 +104,6 @@ def create_multilabel_splits(
 
     return {
         "train": df_train.reset_index(drop=True),
-        "val": df_val.reset_index(drop=True),
+        "validation": df_val.reset_index(drop=True),
         "test": df_test.reset_index(drop=True),
     }

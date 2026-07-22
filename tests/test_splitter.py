@@ -51,7 +51,7 @@ def singlelabel_df():
 class TestCreateMultilabelSplits:
     def test_returns_three_splits(self, multilabel_df):
         splits = create_multilabel_splits(multilabel_df)
-        assert set(splits.keys()) == {"train", "val", "test"}
+        assert set(splits.keys()) == {"train", "validation", "test"}
 
     def test_sizes_sum_to_total(self, multilabel_df):
         splits = create_multilabel_splits(multilabel_df)
@@ -60,7 +60,7 @@ class TestCreateMultilabelSplits:
     def test_no_overlap(self, multilabel_df):
         splits = create_multilabel_splits(multilabel_df)
         train_ids = set(splits["train"]["chebi_id"])
-        val_ids = set(splits["val"]["chebi_id"])
+        val_ids = set(splits["validation"]["chebi_id"])
         test_ids = set(splits["test"]["chebi_id"])
         assert train_ids.isdisjoint(val_ids)
         assert train_ids.isdisjoint(test_ids)
@@ -70,7 +70,7 @@ class TestCreateMultilabelSplits:
         splits = create_multilabel_splits(multilabel_df)
         all_ids = (
             set(splits["train"]["chebi_id"])
-            | set(splits["val"]["chebi_id"])
+            | set(splits["validation"]["chebi_id"])
             | set(splits["test"]["chebi_id"])
         )
         assert all_ids == set(multilabel_df["chebi_id"])
@@ -96,7 +96,7 @@ class TestCreateMultilabelSplits:
         )
         n = len(multilabel_df)
         assert abs(len(splits["test"]) - int(n * 0.1)) <= 2
-        assert abs(len(splits["val"]) - int(n * 0.1)) <= 2
+        assert abs(len(splits["validation"]) - int(n * 0.1)) <= 2
 
     def test_custom_label_start_col(self, multilabel_df):
         # Drop the 'mol' column so labels start at index 1
@@ -117,7 +117,7 @@ class TestCreateMultilabelSplits:
         splits = create_multilabel_splits(singlelabel_df)
         assert sum(len(v) for v in splits.values()) == len(singlelabel_df)
         train_ids = set(splits["train"]["chebi_id"])
-        val_ids = set(splits["val"]["chebi_id"])
+        val_ids = set(splits["validation"]["chebi_id"])
         test_ids = set(splits["test"]["chebi_id"])
         assert train_ids.isdisjoint(val_ids)
         assert train_ids.isdisjoint(test_ids)
