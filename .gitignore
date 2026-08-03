@@ -1,3 +1,6 @@
+# Local Claude Code notes (personal, not committed)
+CLAUDE.local.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,18 +1,18 @@
 import warnings
 
+from chembl_structure_pipeline.standardizer import update_mol_valences
 from rdkit import Chem
 
 
-def _sanitize_molecule(mol: Chem.Mol) -> Chem.Mol | None:
-    """Sanitize molecule"""
-    from chembl_structure_pipeline.standardizer import update_mol_valences
-
-    mol = update_mol_valences(mol)
+def _sanitize_molecule(mol: Chem.Mol) -> Chem.Mol:
+    """Sanitize molecule, falling back to the unsanitized molecule on failure"""
     try:
+        mol = update_mol_valences(mol)
         Chem.SanitizeMol(mol)
     except Exception as e:
         warnings.warn(f"Failed to sanitize molecule: {e}", stacklevel=2)
-        mol = None
+        mol.UpdatePropertyCache(strict=False)
+        Chem.FastFindRings(mol)
     return mol
 
 
@@ -20,6 +20,7 @@ def parse_molblock(molblock: str, chebi_id: str | None = None) -> Chem.Mol | Non
     """Parse a V2000/V3000 molblock into an RDKit Mol object.
 
     Sanitize molecules with the ChEMBL structure pipeline for consistency with ChEBI.
+    If sanitization fails, the unsanitized molecule is returned.
 
     Parameters
     ----------
@@ -37,17 +38,15 @@ def parse_molblock(molblock: str, chebi_id: str | None = None) -> Chem.Mol | Non
     if mol is None:
         warnings.warn(f"Failed to parse molblock for {chebi_id}", stacklevel=2)
         return None
-    mol = _sanitize_molecule(mol)
-    if mol is None:
-        warnings.warn(f"Failed to sanitize molblock for {chebi_id}", stacklevel=2)
 
-    return mol
+    return _sanitize_molecule(mol)
 
 
 def smiles_or_inchi_to_mol(smiles_or_inchi: str) -> Chem.rdchem.Mol | None:
     """Parse a SMILES or InChI string into an RDKit Mol object.
 
     Sanitize molecules with the ChEMBL structure pipeline for consistency with ChEBI.
+    If sanitization fails, the unsanitized molecule is returned.
 
     Parameters
     ----------
@@ -61,15 +60,15 @@ def smiles_or_inchi_to_mol(smiles_or_inchi: str) -> Chem.rdchem.Mol | None:
     """
 
     if smiles_or_inchi.startswith("InChI="):
-        mol = Chem.MolFromInchi(smiles_or_inchi, sanitize=False)
+        mol = Chem.MolFromInchi(smiles_or_inchi, sanitize=False, removeHs=False)
     else:
-        mol = Chem.MolFromSmiles(smiles_or_inchi, sanitize=False)
+        params = Chem.SmilesParserParams()
+        params.removeHs = False
+        params.sanitize = False
+        mol = Chem.MolFromSmiles(smiles_or_inchi, params)
 
     if mol is None:
-        print(f"RDKit failed to at parsing {smiles_or_inchi} (returned None)")
-    else:
-        try:
-            mol = _sanitize_molecule(mol)
-        except Exception as e:
-            print(f"Rdkit failed at sanitizing {smiles_or_inchi}, \n Error: {e}")
-    return mol
+        warnings.warn(f"RDKit failed at parsing {smiles_or_inchi} (returned None)", stacklevel=2)
+        return None
+
+    return _sanitize_molecule(mol)
