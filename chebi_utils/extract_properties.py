@@ -238,12 +238,41 @@ def get_rings(mol: Chem.Mol) -> dict[str, list]:
     return atom_extensions
 
 
+def _add_angular_methyls(
+    mol: Chem.Mol,
+    atom_extensions: dict[str, list],
+    iupac_to_atom: dict[int, int],
+) -> None:
+    """Label angular methyls C18 (on C13) and C19 (on C10) when present.
+
+    Looks for the unique carbon neighbour of the attachment atom that is not
+    part of the gonane core (C1–C17). Estrogens without C19 simply yield no
+    ``steroid_19`` predicate.
+    """
+    core_atom_indices = set(iupac_to_atom.values())
+    for attachment_position, methyl_position in ((13, 18), (10, 19)):
+        attachment_atom_idx = iupac_to_atom.get(attachment_position)
+        if attachment_atom_idx is None:
+            continue
+        methyl_candidates = [
+            neighbor.GetIdx()
+            for neighbor in mol.GetAtomWithIdx(attachment_atom_idx).GetNeighbors()
+            if neighbor.GetAtomicNum() == 6 and neighbor.GetIdx() not in core_atom_indices
+        ]
+        if len(methyl_candidates) == 1:
+            atom_extensions.setdefault(f"steroid_{methyl_position}", []).append(
+                methyl_candidates[0]
+            )
+
+
 def get_steroid_positions(mol: Chem.Mol) -> dict[str, list]:
     """Extract steroid-nucleus position predicates.
 
     Matches the molecule against the gonane core and, on a match, labels the
     ring atoms with their IUPAC steroid position as predicates ``steroid_1`` …
-    ``steroid_17``. Molecules without a gonane core yield no predicates.
+    ``steroid_17``. When present, angular methyls are added as ``steroid_18``
+    (on C13) and ``steroid_19`` (on C10). Molecules without a gonane core yield
+    no predicates.
 
     Parameters
     ----------
@@ -258,11 +287,17 @@ def get_steroid_positions(mol: Chem.Mol) -> dict[str, list]:
     """
     atom_extensions: dict[str, list] = {}
     steroid_match = mol.GetSubstructMatch(_GONANE_PATTERN, useChirality=False)
-    if steroid_match:
-        for pat_idx, atom_idx in enumerate(steroid_match):
-            iupac = _GONANE_IDX_TO_IUPAC.get(pat_idx)
-            if iupac is not None:
-                atom_extensions.setdefault(f"steroid_{iupac}", []).append(atom_idx)
+    if not steroid_match:
+        return atom_extensions
+
+    iupac_to_atom: dict[int, int] = {}
+    for pat_idx, atom_idx in enumerate(steroid_match):
+        iupac = _GONANE_IDX_TO_IUPAC.get(pat_idx)
+        if iupac is not None:
+            atom_extensions.setdefault(f"steroid_{iupac}", []).append(atom_idx)
+            iupac_to_atom[iupac] = atom_idx
+
+    _add_angular_methyls(mol, atom_extensions, iupac_to_atom)
     return atom_extensions
 
 
@@ -289,3 +324,25 @@ def get_numerical_facts(mol: Chem.Mol) -> dict[str, list]:
     for ring in mol.GetRingInfo().AtomRings():
         atom_extensions.setdefault("ring_size", []).append(len(ring))
     return atom_extensions
+
+
+"""Manual check for steroid numbering (not part of the library API).
+
+Run: python -m chebi_utils.extract_properties
+Expect: cholesterol -> steroid_1..19, estrone -> steroid_1..18, benzene -> []
+"""
+if __name__ == "__main__":
+    from chebi_utils.read_molecule import smiles_or_inchi_to_mol
+
+    for name, smiles in {
+        "cholesterol": (
+            "C[C@H](CCCC(C)C)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC=C4[C@@]3(CC[C@@H](C4)O)C)C"
+        ),
+        "estrone": "C[C@]12CC[C@H]3[C@H]([C@@H]1CCC2=O)CCc4c3ccc(O)c4",
+        "benzene": "c1ccccc1",
+    }.items():
+        keys = sorted(
+            get_steroid_positions(smiles_or_inchi_to_mol(smiles)),
+            key=lambda k: int(k.split("_")[1]),
+        )
+        print(name, keys)
