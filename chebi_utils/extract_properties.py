@@ -417,15 +417,102 @@ def _add_side_chain(
         next_position += 1
 
 
+def _c5_steroid_parity(mol: Chem.Mol, iupac_to_atom: dict[int, int]) -> int | None:
+    """Local C5 parity relative to steroid numbering C4, C6, C10.
+
+    Remaps RDKit CW/CCW to a fixed neighbour order. Returns ``+1`` / ``-1``,
+    or ``None`` if C5 is missing, not tetrahedral, or has unexpected neighbours.
+    On the current labelled set: ``+1`` ↔ 5β, ``-1`` ↔ 5α.
+    """
+    try:
+        c4_idx = iupac_to_atom[4]
+        c5_idx = iupac_to_atom[5]
+        c6_idx = iupac_to_atom[6]
+        c10_idx = iupac_to_atom[10]
+    except KeyError:
+        return None
+
+    c5_atom = mol.GetAtomWithIdx(c5_idx)
+    chiral_tag = c5_atom.GetChiralTag()
+    if chiral_tag == Chem.ChiralType.CHI_UNSPECIFIED:
+        return None
+
+    neighbor_indices = [neighbor.GetIdx() for neighbor in c5_atom.GetNeighbors()]
+    heavy_neighbor_indices = [
+        atom_idx
+        for atom_idx in neighbor_indices
+        if mol.GetAtomWithIdx(atom_idx).GetAtomicNum() != 1
+    ]
+    hydrogen_neighbor_indices = [
+        atom_idx
+        for atom_idx in neighbor_indices
+        if mol.GetAtomWithIdx(atom_idx).GetAtomicNum() == 1
+    ]
+    wanted_heavy_order = [c4_idx, c6_idx, c10_idx]
+    if set(heavy_neighbor_indices) != set(wanted_heavy_order):
+        return None
+    if len(heavy_neighbor_indices) != 3:
+        return None
+
+    # RDKit CW/CCW follows GetNeighbors() order. With implicit H that is the
+    # three heavy atoms; with explicit H the H is included in the order.
+    if not hydrogen_neighbor_indices:
+        observed_order = heavy_neighbor_indices
+        wanted_order = wanted_heavy_order
+    elif len(hydrogen_neighbor_indices) == 1:
+        observed_order = neighbor_indices
+        wanted_order = wanted_heavy_order + hydrogen_neighbor_indices
+    else:
+        return None
+
+    permutation = [wanted_order.index(atom_idx) for atom_idx in observed_order]
+    inversions = sum(
+        1
+        for left in range(len(permutation))
+        for right in range(left + 1, len(permutation))
+        if permutation[left] > permutation[right]
+    )
+    permutation_sign = -1 if inversions % 2 else 1
+
+    if chiral_tag == Chem.ChiralType.CHI_TETRAHEDRAL_CW:
+        rdkit_sign = 1
+    elif chiral_tag == Chem.ChiralType.CHI_TETRAHEDRAL_CCW:
+        rdkit_sign = -1
+    else:
+        return None
+
+    return rdkit_sign * permutation_sign
+
+
+def _add_c5_ab_configuration(
+    mol: Chem.Mol,
+    atom_extensions: dict[str, list],
+    iupac_to_atom: dict[int, int],
+) -> None:
+    """Label C5 as ``steroid_5_alpha`` or ``steroid_5_beta`` when tetrahedral.
+
+    Mapping from local parity (C4/C6/C10 order): ``+1`` → beta, ``-1`` → alpha.
+    """
+    c5_atom_idx = iupac_to_atom.get(5)
+    if c5_atom_idx is None:
+        return
+    parity = _c5_steroid_parity(mol, iupac_to_atom)
+    if parity == 1:
+        atom_extensions.setdefault("steroid_5_beta", []).append(c5_atom_idx)
+    elif parity == -1:
+        atom_extensions.setdefault("steroid_5_alpha", []).append(c5_atom_idx)
+
+
 def get_steroid_positions(mol: Chem.Mol) -> dict[str, list]:
     """Extract steroid-nucleus position predicates.
 
     Matches the molecule against the gonane core and, on a match, labels the
     ring atoms with their IUPAC steroid position as predicates ``steroid_1`` …
     ``steroid_17``. When present, angular methyls are added as ``steroid_18``
-    (on C13) and ``steroid_19`` (on C10), and the C17 side chain as
-    ``steroid_20``, ``steroid_21``, … (cholestane-style). Molecules without a
-    gonane core yield no predicates.
+    (on C13) and ``steroid_19`` (on C10), the C17 side chain as
+    ``steroid_20``, ``steroid_21``, … (cholestane-style), and tetrahedral C5
+    configuration as ``steroid_5_alpha`` / ``steroid_5_beta``. Molecules without
+    a gonane core yield no predicates.
 
     Parameters
     ----------
@@ -435,8 +522,9 @@ def get_steroid_positions(mol: Chem.Mol) -> dict[str, list]:
     Returns
     -------
     dict[str, list]
-        Mapping from ``steroid_{position}`` to the ``list[int]`` of matched atom
-        indices. Empty when the molecule has no steroid nucleus.
+        Mapping from ``steroid_{position}`` (and optional ``steroid_5_alpha`` /
+        ``steroid_5_beta``) to the ``list[int]`` of matched atom indices. Empty
+        when the molecule has no steroid nucleus.
     """
     atom_extensions: dict[str, list] = {}
     steroid_match = mol.GetSubstructMatch(_GONANE_PATTERN, useChirality=False)
@@ -452,6 +540,7 @@ def get_steroid_positions(mol: Chem.Mol) -> dict[str, list]:
 
     _add_angular_methyls(mol, atom_extensions, iupac_to_atom)
     _add_side_chain(mol, atom_extensions, iupac_to_atom)  # NEW: C20+
+    _add_c5_ab_configuration(mol, atom_extensions, iupac_to_atom)
     return atom_extensions
 
 
@@ -483,8 +572,9 @@ def get_numerical_facts(mol: Chem.Mol) -> dict[str, list]:
 """Manual check for steroid numbering (not part of the library API).
 
 Run: python -m chebi_utils.extract_properties
-Expect: cholesterol -> steroid_1..27, estrone -> steroid_1..18,
-pregnenolone -> steroid_1..21 (with 18/19), benzene -> []
+Expect: cholesterol -> steroid_1..27 (no 5α/5β: Δ5), estrone -> steroid_1..18,
+pregnenolone -> steroid_1..21 (with 18/19), 5β-androstane -> … + steroid_5_beta,
+5α-pregnene -> … + steroid_5_alpha, benzene -> []
 """
 if __name__ == "__main__":
     from chebi_utils.read_molecule import smiles_or_inchi_to_mol
@@ -497,10 +587,18 @@ if __name__ == "__main__":
         "pregnenolone": (
             "CC(=O)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC=C4[C@@]3(CC[C@@H](C4)O)C)C"
         ),
+        "5beta-androstane-3beta,17alpha-diol": (
+            "[H][C@]12CC[C@]3([H])[C@]([H])(CC[C@]4(C)[C@H](O)CC[C@@]34[H])"
+            "[C@@]1(C)CC[C@H](O)C2"
+        ),
+        "5alpha-Pregn-2-en-20-one": (
+            "[H][C@]12CC=CC[C@]1(C)[C@@]1([H])CC[C@]3(C)[C@@H](C(C)=O)"
+            "CC[C@@]3([H])[C@]1([H])CC2"
+        ),
         "benzene": "c1ccccc1",
     }.items():
         keys = sorted(
             get_steroid_positions(smiles_or_inchi_to_mol(smiles)),
-            key=lambda k: int(k.split("_")[1]),
+            key=lambda k: (int(k.split("_")[1]), k),
         )
         print(name, keys)
