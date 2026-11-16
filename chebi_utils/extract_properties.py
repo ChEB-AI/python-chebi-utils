@@ -9,8 +9,6 @@ import logging
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
-MAX_RING_SIZE = 8
-
 # Gonane core SMARTS (C1–C17, IUPAC steroid numbering).
 # [#6] matches any carbon; ~ matches any bond — handles unsaturated steroids
 # (Δ4, Δ5), ketones, and estrogens (aromatic ring A) without modification.
@@ -199,12 +197,9 @@ def get_molecule_level_properties(mol: Chem.Mol) -> set[str]:
 def get_rings(mol: Chem.Mol) -> dict[str, list]:
     """Extract ring-membership predicates.
 
-    Emits three kinds of predicate:
+    Emits two kinds of predicate, both unary, for rings of every size:
 
-    - ``ring{N}(A1, …, AN)`` – ``A1…AN`` form an N-membered ring, stored for all
-      rotations in both directions. Only for ``N <= MAX_RING_SIZE``.
-    - ``in_ring{N}(A)`` – ``A`` belongs to some N-membered ring
-      (``N <= MAX_RING_SIZE``).
+    - ``in_ring{N}(A)`` – ``A`` belongs to some N-membered ring.
     - ``in_ring(A)`` – ``A`` belongs to some ring of any size.
 
     Parameters
@@ -215,22 +210,14 @@ def get_rings(mol: Chem.Mol) -> dict[str, list]:
     Returns
     -------
     dict[str, list]
-        Mapping from predicate name to its extension: ``ring{N}`` maps to a
-        ``list[tuple[int, ...]]`` of atom-index tuples; ``in_ring`` and
-        ``in_ring{N}`` map to a sorted ``list[int]`` of atom indices.
+        Mapping from predicate name to a sorted ``list[int]`` of atom indices.
     """
     atom_extensions: dict[str, list] = {}
     in_ring_atoms: set[int] = set()
     in_ringN_atoms: dict[int, set[int]] = {}
     for ring in mol.GetRingInfo().AtomRings():
-        n = len(ring)
         in_ring_atoms.update(ring)
-        if n <= MAX_RING_SIZE:
-            for start_atom in range(n):
-                ring_permutation = ring[start_atom:] + ring[:start_atom]
-                atom_extensions.setdefault(f"ring{n}", []).append(tuple(ring_permutation))
-                atom_extensions[f"ring{n}"].append(tuple(reversed(ring_permutation)))
-            in_ringN_atoms.setdefault(n, set()).update(ring)
+        in_ringN_atoms.setdefault(len(ring), set()).update(ring)
     if in_ring_atoms:
         atom_extensions["in_ring"] = sorted(in_ring_atoms)
     for n, atoms in in_ringN_atoms.items():
