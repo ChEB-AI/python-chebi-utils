@@ -202,14 +202,6 @@ def get_rings(mol: Chem.Mol) -> dict[str, list]:
     - ``in_ring{N}(A)`` – ``A`` belongs to some N-membered ring.
     - ``in_ring(A)`` – ``A`` belongs to some ring of any size.
 
-    There is deliberately no N-ary ``ring{N}(A1, …, AN)``. Naming a ring's atoms in
-    order requires storing every rotation in both directions, so a 6-ring costs 12
-    facts, and the ILP search pays for that twice over: Popper's ``deduce_recalls``
-    walks ``2**arity - 2`` argument subsets per fact, and ``build_props`` pairs the
-    predicate with every other one. Measured over 100 ChEBI classes that came to a
-    median 24.4s of the 120s per-class budget, against zero uses of ``ring{N}`` in
-    any learned rule.
-
     Parameters
     ----------
     mol : Chem.Mol
